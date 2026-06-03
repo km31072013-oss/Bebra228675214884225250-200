@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>IPLooker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh; color: #e2e8f0; padding: 10px;
+            display: flex; justify-content: center; align-items: flex-start;
+        }
+        .container {
+            max-width: 100%; width: 100%; background: rgba(30,41,59,0.8);
+            backdrop-filter: blur(20px); border-radius: 1.5rem; padding: 1.5rem 1rem;
+            border: 1px solid rgba(255,255,255,0.15); margin: 5px;
+        }
+        h1 {
+            text-align: center; font-weight: 700; font-size: 2rem;
+            background: linear-gradient(to right, #a5f3fc, #67e8f9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .subtitle {
+            text-align: center; color: #94a3b8; margin-bottom: 1rem; font-size: 0.8rem;
+            border-bottom: 1px dashed #334155; padding-bottom: 0.8rem;
+        }
+        .device-badge {
+            background: #334155; padding: 0.3rem 0.8rem; border-radius: 1rem; font-size: 0.7rem;
+        }
+        .ip-main-card {
+            background: #0f172a; border-radius: 1.5rem; padding: 1.2rem; margin-bottom: 1rem; border: 1px solid #334155;
+        }
+        .ip-address {
+            font-size: 2.5rem; font-weight: 800;
+            font-family: 'Fira Code', monospace; color: #facc15;
+            word-break: break-all;
+        }
+        .isp-badge {
+            background: #1e293b; padding: 0.4rem 0.8rem; border-radius: 2rem;
+            font-size: 0.8rem; color: #facc15; border: 1px solid #facc15;
+            display: inline-block; margin-top: 0.4rem;
+        }
+        .location-badge {
+            background: #1e293b; padding: 0.4rem 0.8rem; border-radius: 2rem;
+            font-size: 0.8rem; color: #cbd5e1; border: 1px solid #475569;
+            display: inline-block; margin-top: 0.3rem; margin-left: 0.3rem;
+        }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 1rem 0; }
+        .card {
+            background: #1e293b; border-radius: 1rem; padding: 0.7rem; border: 1px solid #334155;
+        }
+        .card-title { font-size: 0.6rem; text-transform: uppercase; color: #67e8f9; }
+        .card-value { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; word-break: break-word; }
+        .map-card {
+            background: #0f172a; border-radius: 1.5rem; padding: 0.8rem; margin: 0.8rem 0; border: 1px solid #334155;
+        }
+        .map-title { font-size: 0.7rem; color: #67e8f9; margin-bottom: 0.4rem; }
+        #map { height: 200px; border-radius: 1rem; border: 1px solid #475569; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0; }
+        button {
+            background: #2563eb; border: 1px solid #60a5fa;
+            color: white; font-weight: 600; padding: 0.5rem 0.8rem; border-radius: 2rem;
+            font-size: 0.7rem; cursor: pointer; flex: 1 1 auto; min-width: 60px;
+        }
+        button:active { background: #1d4ed8; }
+        .speed-test-area {
+            background: #0f172a; border-radius: 1.5rem; padding: 1rem; margin: 1rem 0; border: 1px solid #334155;
+            text-align: center;
+        }
+        .speed-results { display: flex; justify-content: space-around; margin: 0.6rem 0; gap: 0.4rem; }
+        .speed-item { background: #1e293b; border-radius: 1rem; padding: 0.5rem; flex: 1; }
+        .speed-number { font-size: 1.5rem; font-weight: 800; color: #facc15; }
+        .blacklist-box {
+            background: #1e293b; border-radius: 1rem; padding: 0.8rem; margin: 0.8rem 0; border: 1px solid #334155;
+            font-size: 0.7rem;
+        }
+        .footer-links { display: flex; justify-content: center; gap: 1rem; margin-top: 0.8rem; color: #64748b; font-size: 0.7rem; }
+        .footer-links span { cursor: pointer; text-decoration: underline; }
+        hr { border-color: #334155; margin: 0.8rem 0; }
+        .admin-panel {
+            margin-top: 1.5rem; background: #0f172a; border-radius: 1.5rem; padding: 1rem;
+            border: 2px solid #facc15; display: none;
+        }
+        .admin-panel h3 { color: #facc15; margin-bottom: 0.6rem; font-size: 0.9rem; }
+        .visitor-table { width: 100%; border-collapse: collapse; font-size: 0.55rem; color: #cbd5e1; }
+        .visitor-table th { text-align: left; padding: 0.3rem; border-bottom: 1px solid #334155; color: #67e8f9; font-size: 0.5rem; }
+        .visitor-table td { padding: 0.3rem; border-bottom: 1px solid #1e293b; word-break: break-all; }
+        .secret-btn {
+            display: block; margin: 1rem auto 0; background: #2d3748; color: #4a5568;
+            border: 1px solid #3a4556; padding: 0.2rem 0.8rem; border-radius: 1rem;
+            font-size: 0.55rem; cursor: pointer; opacity: 0.4;
+        }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #1e293b; border-radius: 1.5rem; padding: 1.5rem; border: 1px solid #475569;
+            width: 90%; max-width: 300px; text-align: center;
+        }
+        .modal-box h3 { color: #facc15; margin-bottom: 0.8rem; font-size: 0.9rem; }
+        .modal-box input {
+            width: 100%; padding: 0.6rem; border-radius: 1rem; border: 1px solid #475569;
+            background: #0f172a; color: white; font-size: 0.8rem; text-align: center; margin-bottom: 0.6rem;
+        }
+        .modal-box button { width: 100%; margin-top: 0.3rem; }
+        .modal-close { background: transparent; border: 1px solid #475569; color: #94a3b8; margin-top: 0.4rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔍 IPLooker</h1>
+    <div class="subtitle">
+        Проверка IP-адреса <span class="device-badge" id="deviceType">📱</span>
+    </div>
+
+    <div class="ip-main-card">
+        <div class="ip-address" id="userIp">Загрузка...</div>
+        <span class="isp-badge" id="ispBadge">Провайдер: загрузка...</span>
+        <span class="location-badge">📍 <span id="cityRegion">...</span></span>
+    </div>
+
+    <div class="grid">
+        <div class="card"><div class="card-title">🖥️ Hostname</div><div class="card-value" id="hostname">—</div></div>
+        <div class="card"><div class="card-title">📡 ASN</div><div class="card-value" id="asn">—</div></div>
+        <div class="card"><div class="card-title">📍 Координаты</div><div class="card-value" id="coordinates">—</div></div>
+        <div class="card"><div class="card-title">⏱️ Часовой пояс</div><div class="card-value" id="timezone">—</div></div>
+    </div>
+
+    <div class="map-card">
+        <div class="map-title">🗺️ Карта</div>
+        <div id="map"></div>
+    </div>
+
+    <div class="btn-row">
+        <button id="refreshDataBtn">🔄 Обновить</button>
+        <button id="checkProxyBtn">🛡️ Прокси</button>
+        <button id="dnsLeakBtn">🔍 DNS</button>
+        <button id="gpsBtn">📍 GPS</button>
+    </div>
+
+    <div class="speed-test-area">
+        <div style="font-weight:700;">⚡ Спидтест</div>
+        <div id="speedStatus" style="font-size:0.7rem; color:#94a3b8;">Готов</div>
+        <div class="speed-results">
+            <div class="speed-item"><div style="font-size:0.55rem; color:#94a3b8;">Download</div><div class="speed-number" id="downloadSpeed">—</div></div>
+            <div class="speed-item"><div style="font-size:0.55rem; color:#94a3b8;">Upload</div><div class="speed-number" id="uploadSpeed">—</div></div>
+            <div class="speed-item"><div style="font-size:0.55rem; color:#94a3b8;">Ping</div><div class="speed-number" id="pingValue">—</div></div>
+        </div>
+        <button id="startSpeedTest">🚀 Запустить</button>
+    </div>
+
+    <div class="blacklist-box">
+        📋 Blacklist: <span id="blacklistStatus">Ожидание...</span>
+        <button id="checkBlacklistBtn" style="margin-left:0.3rem; padding:0.3rem 0.6rem; font-size:0.6rem;">Проверить</button>
+        <div id="blacklistDetails" style="font-size:0.6rem; color:#94a3b8;"></div>
+    </div>
+
+    <div class="admin-panel" id="adminPanel">
+        <h3>📊 Посетители</h3>
+        <table class="visitor-table">
+            <thead><tr><th>IP</th><th>Город</th><th>Координаты</th><th>Устр.</th><th>Время</th></tr></thead>
+            <tbody id="visitorBody"></tbody>
+        </table>
+        <button id="clearVisitorsBtn" style="background:#dc2626; border-color:#f87171; margin-top:0.4rem; font-size:0.6rem;">🗑️ Очистить</button>
+    </div>
+
+    <hr>
+    <div class="footer-links">
+        <span id="copyIpBtn">📋 Копировать IP</span>
+        <span id="whoisLookupBtn">🔎 WHOIS</span>
+    </div>
+
+    <button class="secret-btn" id="secretBtn">ip server</button>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+        <h3>🔐 Код доступа</h3>
+        <input type="password" id="secretCodeInput" placeholder="Введите код">
+        <button id="submitCodeBtn">Войти</button>
+        <button class="modal-close" id="closeModalBtn">Отмена</button>
+        <div id="modalError" style="color:#f87171; font-size:0.65rem; margin-top:0.4rem; display:none;">Неверный код</div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var CODE = 'vbif31072013';
+    var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent);
+    document.getElementById('deviceType').textContent = isMobile ? '📱' : '💻';
+
+    var ip = '';
+    var admin = false;
+    var map = null;
+    var marker = null;
+    var currentGeo = null;
+
+    function initMap(lat, lon) {
+        if (!lat || !lon) return;
+        if (!map) {
+            map = L.map('map').setView([lat, lon], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        }
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lon]).addTo(map).bindPopup(lat.toFixed(4)+', '+lon.toFixed(4)).openPopup();
+        map.setView([lat, lon], 13);
+    }
+
+    function saveVisit(geo) {
+        var visits = JSON.parse(localStorage.getItem('_ipvisits') || '[]');
+        var now = new Date().toLocaleString('ru-RU');
+        var exists = visits.some(function(v) {
+            return v.ip === ip && (new Date() - new Date(v.time)) < 300000;
+        });
+        if (!exists) {
+            visits.push({ 
+                ip: ip, 
+                city: (geo.city||'?') + ', ' + (geo.country_name||''), 
+                coords: (geo.latitude ? geo.latitude.toFixed(4)+', '+geo.longitude.toFixed(4) : '—'),
+                device: isMobile ? '📱' : '💻', 
+                time: now 
+            });
+            if (visits.length > 100) visits = visits.slice(-100);
+            localStorage.setItem('_ipvisits', JSON.stringify(visits));
+        }
+        if (admin) renderVisits();
+    }
+
+    function renderVisits() {
+        var visits = JSON.parse(localStorage.getItem('_ipvisits') || '[]');
+        var tbody = document.getElementById('visitorBody');
+        if (visits.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Пусто</td></tr>';
+        } else {
+            tbody.innerHTML = visits.reverse().map(function(v) {
+                return '<tr><td>'+v.ip+'</td><td>'+v.city+'</td><td>'+v.coords+'</td><td>'+v.device+'</td><td>'+v.time+'</td></tr>';
+            }).join('');
+        }
+    }
+
+    function loadIP() {
+        fetch('https://api.ipify.org?format=json')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            ip = d.ip;
+            document.getElementById('userIp').textContent = ip;
+            return fetch('https://ipapi.co/' + ip + '/json/');
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(geo) {
+            currentGeo = geo;
+            if (geo && !geo.error) {
+                document.getElementById('ispBadge').textContent = '📡 ' + (geo.org || geo.isp || 'Неизвестно');
+                document.getElementById('cityRegion').textContent = (geo.city||'') + ', ' + (geo.country_name||'');
+                document.getElementById('hostname').textContent = geo.hostname || '—';
+                document.getElementById('asn').textContent = (geo.asn||'—');
+                document.getElementById('coordinates').textContent = geo.latitude ? geo.latitude.toFixed(4)+', '+geo.longitude.toFixed(4) : '—';
+                document.getElementById('timezone').textContent = geo.timezone || '—';
+                initMap(geo.latitude, geo.longitude);
+                saveVisit(geo);
+            }
+        })
+        .catch(function() {
+            document.getElementById('userIp').textContent = 'Ошибка';
+        });
+    }
+
+    function gpsCoords() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            document.getElementById('coordinates').textContent = pos.coords.latitude.toFixed(6)+', '+pos.coords.longitude.toFixed(6);
+            initMap(pos.coords.latitude, pos.coords.longitude);
+        }, function() {}, { enableHighAccuracy: true, timeout: 5000 });
+    }
+
+    function checkBlacklist() {
+        if (!ip) return;
+        document.getElementById('blacklistStatus').textContent = '...';
+        fetch('https://api.abuseipdb.com/api/v2/check?ipAddress='+ip, {
+            headers: { 'Key': '09a3e0d9e9a0bf5b1c8b0d7e9f6a5c4b3a2e1d0c', 'Accept': 'application/json' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var score = d && d.data ? d.data.abuseConfidenceScore : 0;
+            document.getElementById('blacklistStatus').textContent = score > 30 ? '⚠️ Подозрительный' : '✅ Чистый';
+            document.getElementById('blacklistDetails').textContent = 'Жалоб: ' + (d && d.data ? d.data.totalReports||0 : 0);
+        })
+        .catch(function() {
+            document.getElementById('blacklistStatus').textContent = 'Ошибка';
+        });
+    }
+
+    function speedTest() {
+        var ds = document.getElementById('downloadSpeed');
+        var us = document.getElementById('uploadSpeed');
+        var pv = document.getElementById('pingValue');
+        var ss = document.getElementById('speedStatus');
+        ss.textContent = 'Тест...';
+        
+        var pingStart = performance.now();
+        fetch('https://speed.cloudflare.com/__down?bytes=0')
+        .then(function() {
+            pv.textContent = Math.round(performance.now() - pingStart);
+            var dlStart = performance.now();
+            return fetch('https://speed.cloudflare.com/__down?bytes=3000000');
+        })
+        .then(function(r) { return r.blob(); })
+        .then(function(blob) {
+            ds.textContent = ((blob.size*8)/((performance.now()-pingStart)/1000)/1024/1024).toFixed(1);
+            
+            var ulData = new Uint8Array(1500000);
+            var ulStart = performance.now();
+            return fetch('https://speed.cloudflare.com/__up', { method:'POST', body:ulData.buffer })
+            .then(function() {
+                us.textContent = ((ulData.length*8)/((performance.now()-ulStart)/1000)/1024/1024).toFixed(1);
+                ss.textContent = '✅ Готово';
+            });
+        })
+        .catch(function() {
+            ss.textContent = 'Ошибка';
+        });
+    }
+
+    document.getElementById('secretBtn').onclick = function() {
+        document.getElementById('modalOverlay').classList.add('active');
+    };
+    document.getElementById('closeModalBtn').onclick = function() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    };
+    document.getElementById('submitCodeBtn').onclick = function() {
+        if (document.getElementById('secretCodeInput').value.trim() === CODE) {
+            admin = true;
+            document.getElementById('adminPanel').style.display = 'block';
+            renderVisits();
+            document.getElementById('modalOverlay').classList.remove('active');
+        } else {
+            document.getElementById('modalError').style.display = 'block';
+        }
+    };
+    document.getElementById('modalOverlay').onclick = function(e) {
+        if (e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('active');
+    };
+
+    document.getElementById('refreshDataBtn').onclick = loadIP;
+    document.getElementById('gpsBtn').onclick = gpsCoords;
+    document.getElementById('checkBlacklistBtn').onclick = checkBlacklist;
+    document.getElementById('startSpeedTest').onclick = speedTest;
+    document.getElementById('copyIpBtn').onclick = function() {
+        if (ip) navigator.clipboard.writeText(ip);
+    };
+    document.getElementById('whoisLookupBtn').onclick = function() {
+        if (ip) window.open('https://whois.domaintools.com/'+ip, '_blank');
+    };
+    document.getElementById('checkProxyBtn').onclick = function() {
+        if (currentGeo) {
+            document.getElementById('ispBadge').textContent = '📡 ' + (currentGeo.org || currentGeo.isp || 'Неизвестно') + (currentGeo.proxy ? ' (ПРОКСИ)' : '');
+        }
+    };
+    document.getElementById('dnsLeakBtn').onclick = function() {
+        fetch('https://cloudflare-dns.com/dns-query?name=whoami.akamai.net&type=A', {
+            headers: { 'Accept': 'application/dns-json' }
+        });
+    };
+    document.getElementById('clearVisitorsBtn').onclick = function() {
+        localStorage.removeItem('_ipvisits');
+        renderVisits();
+    };
+
+    loadIP();
+    setTimeout(checkBlacklist, 2000);
+})();
+</script>
+</body>
+</html>
